@@ -37,9 +37,9 @@ router.post('/', async (req, res) => {
     sessionLength    // e.g. '1 hour'
   } = req.body;
 
-  if (!subjects || !Array.isArray(subjects) || subjects.length < 2) {
+  if (!subjects || !Array.isArray(subjects) || subjects.length < 1) {
     return res.status(400).json({
-      error: 'Timetable requires more than 1 subject. Please add multiple subjects.'
+      error: 'At least 1 subject is required to generate a timetable.'
     });
   }
 
@@ -51,6 +51,10 @@ router.post('/', async (req, res) => {
   const today = new Date();
   const exam = new Date(examDate);
   const daysLeft = Math.max(1, Math.ceil((exam - today) / (1000 * 60 * 60 * 24)));
+
+  // Unique seed so every generation is different
+  const seed = `${Date.now()}-${Math.floor(Math.random() * 99999)}`;
+  const generatedAt = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
   // Build subject context with weakness priority
   const subjectContext = subjects.map(s => {
@@ -79,8 +83,8 @@ SCHEDULE PARAMETERS:
 - Days available: ${daysAvailable || 'Monday-Saturday'}
 
 RULES (STRICTLY FOLLOW):
-1. Distribute all subjects, giving MORE sessions to higher-priority (weaker) subjects
-2. Rotate subjects daily — do NOT repeat the same subject twice in a day unless urgent
+1. Distribute all sessions for the subject(s), giving MORE time to higher-priority (weaker) topics
+2. ${subjects.length > 1 ? 'Rotate subjects daily — do NOT repeat the same subject twice in a day unless urgent' : 'Break the subject into different chapters/topics each session'}
 3. Include a short break (${breakDuration || '10-15 mins'}) between every session
 4. Add "📖 Revision Session" every 3rd day covering previously studied topics
 5. Add a "🎯 Mock Test Practice" slot 2-3 days before exam date

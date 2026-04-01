@@ -136,11 +136,11 @@ export default function TimetablePage() {
   const [savedToFirestore, setSavedToFirestore] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
 
-  // Load subjects and existing timetable
+  // Load subjects only — never auto-show old timetable
   useEffect(() => {
     if (!currentUser) return
     async function loadData() {
-      // 1. Fetch subjects
+      // Fetch subjects from saved study plans
       try {
         const q = query(collection(db, 'studyPlans'), where('userId', '==', currentUser.uid))
         const snap = await getDocs(q)
@@ -157,28 +157,6 @@ export default function TimetablePage() {
       } catch (e) {
         console.error('Error loading subjects:', e)
       }
-
-      // 2. Fetch existing timetable 
-      try {
-        const docRef = doc(db, 'timetables', currentUser.uid)
-        const docSnap = await getDoc(docRef)
-        if (docSnap.exists()) {
-          const d = docSnap.data()
-          if (d.timetable && d.summary) {
-            setTimetableData({ timetable: d.timetable, summary: d.summary })
-            setSavedToFirestore(true)
-            
-            // Extract the exam date from the generated doc to populate form back
-            if (d.examDate) {
-              setForm(prev => ({ ...prev, examDate: d.examDate }))
-            }
-            // Auto view the saved timetable
-            setPageState('result')
-          }
-        }
-      } catch (e) {
-        console.error('Error loading saved timetable:', e)
-      }
     }
     loadData()
   }, [currentUser])
@@ -186,8 +164,8 @@ export default function TimetablePage() {
   const handleFormChange = e => setForm({ ...form, [e.target.name]: e.target.value })
 
   const handleGenerate = async () => {
-    if (subjects.length < 2) {
-      setError('Timetable requires more than 1 subject. Please set up your study plan first with multiple subjects.')
+    if (subjects.length < 1) {
+      setError('No subjects found. Please set up your study plan first.')
       return
     }
     if (!form.examDate) {
@@ -351,13 +329,13 @@ export default function TimetablePage() {
       {/* Single subject warning */}
       {subjects.length === 1 && (
         <div style={{
-          padding: '16px 20px', borderRadius: '12px', marginBottom: '20px',
-          background: 'rgba(253,203,110,0.1)', border: '1px solid rgba(253,203,110,0.3)',
+          padding: '14px 20px', borderRadius: '12px', marginBottom: '20px',
+          background: 'rgba(108,92,231,0.08)', border: '1px solid rgba(108,92,231,0.2)',
           display: 'flex', gap: '12px', alignItems: 'center'
         }}>
-          <span style={{ fontSize: '1.4rem' }}>⚠️</span>
-          <p style={{ margin: 0, color: '#fdcb6e', fontSize: '0.9rem' }}>
-            <strong>Timetable available only for multiple subjects.</strong> You currently have only 1 subject set up.{' '}
+          <span style={{ fontSize: '1.2rem' }}>💡</span>
+          <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            You have <strong>1 subject</strong> set up. A single-subject timetable will be generated.{' '}
             <button
               onClick={() => navigate('/setup')}
               style={{ background: 'none', border: 'none', color: 'var(--primary-light)', cursor: 'pointer', textDecoration: 'underline', fontSize: 'inherit', padding: 0 }}
@@ -414,16 +392,16 @@ export default function TimetablePage() {
               )
             })}
           </div>
-          {subjects.length < 2 && (
+          {subjects.length < 1 && (
             <p style={{ color: 'var(--danger)', fontSize: '0.82rem', marginTop: '10px', padding: '8px 12px', background: 'rgba(225,112,85,0.08)', borderRadius: '8px' }}>
-              ⚠️ Add at least 2 subjects to generate a timetable.
+              ⚠️ No subjects found. Please set up your study plan first.
             </p>
           )}
         </div>
       )}
 
       {/* Preferences form */}
-      {subjects.length >= 2 && (
+      {subjects.length >= 1 && (
         <div className="card">
           <div className="card-header" style={{ marginBottom: '20px' }}>
             <h3>⚙️ Schedule Preferences</h3>
@@ -510,7 +488,7 @@ export default function TimetablePage() {
           <button
             className="btn btn-primary btn-block"
             onClick={handleGenerate}
-            disabled={!form.examDate || subjects.length < 2}
+            disabled={!form.examDate || subjects.length < 1}
             style={{ padding: '16px', fontSize: '1rem', opacity: !form.examDate ? 0.6 : 1 }}
           >
             🚀 Generate Personalised Timetable
